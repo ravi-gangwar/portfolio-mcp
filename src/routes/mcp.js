@@ -1,5 +1,6 @@
 const express = require('express');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { KokoroTTS } = require('kokoro-js');
 const { 
   PERSONAL_INFO, 
   SUMMARY, 
@@ -15,6 +16,25 @@ const {
   getRecentHistory, 
   extractCleanAudioText 
 } = require('../utils/chatHistory');
+
+let ttsInstance = null;
+
+async function initializeTTS() {
+  if (!ttsInstance) {
+    try {
+      const model_id = "onnx-community/Kokoro-82M-v1.0-ONNX";
+      ttsInstance = await KokoroTTS.from_pretrained(model_id, {
+        dtype: "q8",
+        device: "cpu",
+      });
+      console.log("Kokoro TTS initialized successfully");
+    } catch (error) {
+      console.error("Failed to initialize Kokoro TTS:", error);
+      throw error;
+    }
+  }
+  return ttsInstance;
+}
 
 const router = express.Router();
 
@@ -174,10 +194,32 @@ router.post('/', async (req, res) => {
     console.log("Clean audio text:", cleanAudioText);
     console.log("Final parsed response:", parsedResponse);
 
+    // Generate audio for the response
+    let audioBuffer = null;
+    try {
+      const tts = await initializeTTS();
+      const audio = await tts.generate(cleanAudioText, {
+        voice: "af_nicole",
+      });
+      const wav = await audio.toWav();
+      audioBuffer = Buffer.from(wav);
+      console.log("Audio generated successfully, size:", audioBuffer.length);
+    } catch (error) {
+      console.error("Failed to generate audio:", error);
+      // Continue without audio if TTS fails
+    }
+
     // Add assistant response to history - only the clean audio text
     addMessageToHistory(clientIP, cleanAudioText, 'assistant');
 
-    res.json(parsedResponse);
+    // Send response with audio data
+    const responseData = {
+      ...parsedResponse,
+      audioData: audioBuffer ? audioBuffer.toString('base64') : null,
+      audioSize: audioBuffer ? audioBuffer.length : 0
+    };
+
+    res.json(responseData);
   } catch (error) {
     console.error('MCP Server Error:', error);
     res.status(500).json({

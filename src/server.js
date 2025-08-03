@@ -7,7 +7,6 @@ const corsMiddleware = require('./middleware/cors');
 
 // Import routes
 const mcpRoutes = require('./routes/mcp');
-const ttsRoutes = require('./routes/tts');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -46,7 +45,6 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/mcp', mcpRoutes);
-app.use('/api/tts', ttsRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -71,8 +69,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
-  console.log(`🤖 MCP endpoint: http://localhost:${PORT}/api/mcp`);
-  console.log(`🔊 TTS endpoint: http://localhost:${PORT}/api/tts`);
+  console.log(`🤖 Combined MCP+TTS endpoint: http://localhost:${PORT}/api/mcp`);
 });
 
 // Graceful shutdown
