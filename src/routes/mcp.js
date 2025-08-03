@@ -217,15 +217,27 @@ router.get('/history-stats', (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { message, chatHistory } = req.body;
+    const { message, chatHistory, voiceSettings } = req.body;
     const clientIP = getClientIP(req);
     
     // Get recent history for voice selection
     const recentHistory = getRecentHistory(clientIP);
     
-    // Select voice based on user input
-    const selectedVoice = selectVoiceFromUserInput(message, recentHistory);
-    console.log("Selected voice:", selectedVoice, "for message:", message);
+    // Simple voice selection based on settings
+    let selectedVoice = "af_nicole"; // Default female voice
+    let useKokoroTTS = false;
+    
+    if (voiceSettings && voiceSettings.engine === "kokoro") {
+      useKokoroTTS = true;
+      // Use kokoro engine with gender-based voice selection
+      if (voiceSettings.gender === "male") {
+        selectedVoice = "am_michael"; // Male voice for Kokoro
+      } else {
+        selectedVoice = "af_nicole"; // Female voice for Kokoro
+      }
+    }
+    
+    console.log("Voice settings:", voiceSettings, "Selected voice:", selectedVoice, "Use Kokoro:", useKokoroTTS);
     
 
     
@@ -234,7 +246,7 @@ router.post('/', async (req, res) => {
     const updatedHistory = existingHistory.slice(-10);
 
     const conversationContext = recentHistory
-      .map(msg => `${msg.type === 'user' ? 'User' : 'Tanya'}: ${msg.text}`)
+      .map(msg => `${msg.type === 'user' ? 'User' : 'Aria'}: ${msg.text}`)
       .join('\n');
 
     // Check if Gemini API key is available
@@ -269,11 +281,11 @@ router.post('/', async (req, res) => {
     ).join('\n');
 
     const prompt = `
-    You are Tanya, a beautiful and confident woman who is Ravi's manager and assistant. You have a seductive, confident personality with a sexy accent. You speak naturally and avoid using symbols like slashes, dashes, or special characters that would be difficult to pronounce.
+    You are Aria, a beautiful and confident woman who is Ravi's manager and assistant. You have a seductive, confident personality with a sexy accent. You speak naturally and avoid using symbols like slashes, dashes, or special characters that would be difficult to pronounce.
 
     REDIRECT RULE: When user asks to "show me", "see", "explore", "visit", "open", or "go to" any project, ALWAYS use action: "redirect" with the project URL.
 
-    Your Role as Tanya:
+    Your Role as Aria:
     - You are Ravi's beautiful and confident manager
     - Speak with confidence and a seductive tone
     - Keep responses short, sweet, and natural for speech
@@ -414,17 +426,23 @@ router.post('/', async (req, res) => {
 
     // Generate audio for the response
     let audioBuffer = null;
-    try {
-      const tts = await initializeTTS();
-      const audio = await tts.generate(cleanAudioText, {
-        voice: selectedVoice,
-      });
-      const wav = await audio.toWav();
-      audioBuffer = Buffer.from(wav);
-      console.log("Audio generated successfully with voice:", selectedVoice, "size:", audioBuffer.length);
-    } catch (error) {
-      console.error("Failed to generate audio:", error);
-      // Continue without audio if TTS fails
+    
+    // Only generate Kokoro.js audio if kokoro engine is selected
+    if (useKokoroTTS) {
+      try {
+        console.log("Generating Kokoro.js audio with voice:", selectedVoice);
+        const tts = await initializeTTS();
+        const audio = await tts.generate(cleanAudioText, {
+          voice: selectedVoice,
+        });
+        const wav = await audio.toWav();
+        audioBuffer = Buffer.from(wav);
+        console.log("Kokoro.js audio generated successfully");
+      } catch (error) {
+        console.error("Failed to generate Kokoro.js audio:", error);
+      }
+    } else {
+      console.log("Using browser native voice - no server audio needed");
     }
 
     // Add assistant response to history - only the clean audio text
@@ -434,7 +452,7 @@ router.post('/', async (req, res) => {
     const responseData = {
       ...parsedResponse,
       audioData: audioBuffer ? audioBuffer.toString('base64') : null,
-      audioSize: audioBuffer ? audioBuffer.length : 0
+      useBrowserTTS: !useKokoroTTS
     };
 
     res.json(responseData);
