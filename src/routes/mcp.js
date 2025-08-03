@@ -14,21 +14,36 @@ const {
   getClientIP, 
   addMessageToHistory, 
   getRecentHistory, 
+  clearHistory,
+  getHistoryStats,
   extractCleanAudioText 
 } = require('../utils/chatHistory');
 
 let ttsInstance = null;
 
-// Available Kokoro TTS voices
+// Available Kokoro TTS voices (based on actual available voices from Kokoro)
 const AVAILABLE_VOICES = {
   "af_nicole": { name: "Nicole", description: "Friendly and warm", gender: "female" },
   "af_sarah": { name: "Sarah", description: "Professional and clear", gender: "female" },
   "af_emma": { name: "Emma", description: "Energetic and enthusiastic", gender: "female" },
-  "af_lisa": { name: "Lisa", description: "Calm and soothing", gender: "female" },
-  "af_anna": { name: "Anna", description: "Confident and authoritative", gender: "female" },
-  "am_steve": { name: "Steve", description: "Professional male voice", gender: "male" },
-  "am_david": { name: "David", description: "Friendly male voice", gender: "male" },
-  "am_mike": { name: "Mike", description: "Energetic male voice", gender: "male" },
+  "af_bella": { name: "Bella", description: "Passionate and engaging", gender: "female" },
+  "af_heart": { name: "Heart", description: "Warm and caring", gender: "female" },
+  "af_alloy": { name: "Alloy", description: "Clear and precise", gender: "female" },
+  "af_aoede": { name: "Aoede", description: "Melodic and expressive", gender: "female" },
+  "af_jessica": { name: "Jessica", description: "Professional and confident", gender: "female" },
+  "af_kore": { name: "Kore", description: "Elegant and sophisticated", gender: "female" },
+  "af_nova": { name: "Nova", description: "Dynamic and energetic", gender: "female" },
+  "af_river": { name: "River", description: "Smooth and flowing", gender: "female" },
+  "af_sky": { name: "Sky", description: "Light and airy", gender: "female" },
+  "am_adam": { name: "Adam", description: "Casual and friendly", gender: "male" },
+  "am_echo": { name: "Echo", description: "Clear and resonant", gender: "male" },
+  "am_eric": { name: "Eric", description: "Professional and reliable", gender: "male" },
+  "am_fenrir": { name: "Fenrir", description: "Strong and powerful", gender: "male" },
+  "am_liam": { name: "Liam", description: "Warm and approachable", gender: "male" },
+  "am_michael": { name: "Michael", description: "Confident and authoritative", gender: "male" },
+  "am_onyx": { name: "Onyx", description: "Deep and rich", gender: "male" },
+  "am_puck": { name: "Puck", description: "Playful and energetic", gender: "male" },
+  "am_santa": { name: "Santa", description: "Jolly and cheerful", gender: "male" },
 };
 
 // Function to select voice based on user input
@@ -45,27 +60,66 @@ function selectVoiceFromUserInput(userMessage, chatHistory) {
   if (message.includes("emma")) {
     return "af_emma";
   }
-  if (message.includes("lisa")) {
-    return "af_lisa";
+  if (message.includes("bella")) {
+    return "af_bella";
   }
-  if (message.includes("anna")) {
-    return "af_anna";
+  if (message.includes("heart")) {
+    return "af_heart";
   }
-  if (message.includes("steve")) {
-    return "am_steve";
+  if (message.includes("alloy")) {
+    return "af_alloy";
   }
-  if (message.includes("david")) {
-    return "am_david";
+  if (message.includes("aoede")) {
+    return "af_aoede";
   }
-  if (message.includes("mike")) {
-    return "am_mike";
+  if (message.includes("jessica")) {
+    return "af_jessica";
+  }
+  if (message.includes("kore")) {
+    return "af_kore";
+  }
+  if (message.includes("nova")) {
+    return "af_nova";
+  }
+  if (message.includes("river")) {
+    return "af_river";
+  }
+  if (message.includes("sky")) {
+    return "af_sky";
+  }
+  if (message.includes("adam")) {
+    return "am_adam";
+  }
+  if (message.includes("echo")) {
+    return "am_echo";
+  }
+  if (message.includes("eric")) {
+    return "am_eric";
+  }
+  if (message.includes("fenrir")) {
+    return "am_fenrir";
+  }
+  if (message.includes("liam")) {
+    return "am_liam";
+  }
+  if (message.includes("michael")) {
+    return "am_michael";
+  }
+  if (message.includes("onyx")) {
+    return "am_onyx";
+  }
+  if (message.includes("puck")) {
+    return "am_puck";
+  }
+  if (message.includes("santa")) {
+    return "am_santa";
   }
   
   // Check for gender-based requests
-  if (message.includes("male voice") || message.includes("guy voice") || message.includes("man voice")) {
-    return "am_steve"; // Default male voice
+  if (message.includes("male voice") || message.includes("guy voice") || message.includes("man voice") || message.includes("male")) {
+    return "am_michael"; // Default male voice
   }
-  if (message.includes("female voice") || message.includes("girl voice") || message.includes("woman voice")) {
+  if (message.includes("female voice") || message.includes("girl voice") || message.includes("woman voice") || message.includes("female")) {
     return "af_nicole"; // Default female voice
   }
   
@@ -76,18 +130,39 @@ function selectVoiceFromUserInput(userMessage, chatHistory) {
   if (message.includes("energetic") || message.includes("enthusiastic") || message.includes("excited")) {
     return "af_emma";
   }
-  if (message.includes("calm") || message.includes("soothing") || message.includes("relaxed")) {
-    return "af_lisa";
+  if (message.includes("passionate") || message.includes("engaging")) {
+    return "af_bella";
+  }
+  if (message.includes("warm") || message.includes("caring")) {
+    return "af_heart";
+  }
+  if (message.includes("clear") || message.includes("precise")) {
+    return "af_alloy";
+  }
+  if (message.includes("melodic") || message.includes("expressive")) {
+    return "af_aoede";
   }
   if (message.includes("confident") || message.includes("authoritative")) {
-    return "af_anna";
+    return "am_michael";
   }
-  if (message.includes("friendly") || message.includes("warm")) {
-    return "af_nicole";
+  if (message.includes("friendly") || message.includes("approachable")) {
+    return "am_liam";
+  }
+  if (message.includes("strong") || message.includes("powerful")) {
+    return "am_fenrir";
+  }
+  if (message.includes("deep") || message.includes("rich")) {
+    return "am_onyx";
+  }
+  if (message.includes("playful") || message.includes("fun")) {
+    return "am_puck";
+  }
+  if (message.includes("jolly") || message.includes("cheerful")) {
+    return "am_santa";
   }
   
   // Check for voice change requests
-  if (message.includes("change voice") || message.includes("switch voice") || message.includes("different voice")) {
+  if (message.includes("change voice") || message.includes("switch voice") || message.includes("different voice") || message.includes("change the voice")) {
     // If user just asks for a change without specifying, cycle through voices
     const recentVoices = chatHistory
       .filter(msg => msg.voice)
@@ -103,6 +178,8 @@ function selectVoiceFromUserInput(userMessage, chatHistory) {
       return "af_sarah"; // Fallback to Sarah if all voices were recently used
     }
   }
+  
+
   
   // Default to Nicole if no specific request
   return "af_nicole";
@@ -127,6 +204,17 @@ async function initializeTTS() {
 
 const router = express.Router();
 
+// History stats endpoint for debugging
+router.get('/history-stats', (req, res) => {
+  const clientIP = getClientIP(req);
+  const stats = getHistoryStats(clientIP);
+  res.json({
+    ip: clientIP,
+    stats: stats,
+    totalActiveSessions: chatHistoryStore.size
+  });
+});
+
 router.post('/', async (req, res) => {
   try {
     const { message, chatHistory } = req.body;
@@ -138,6 +226,8 @@ router.post('/', async (req, res) => {
     // Select voice based on user input
     const selectedVoice = selectVoiceFromUserInput(message, recentHistory);
     console.log("Selected voice:", selectedVoice, "for message:", message);
+    
+
     
     // Add current message to history
     const existingHistory = addMessageToHistory(clientIP, message, 'user');
@@ -181,6 +271,8 @@ router.post('/', async (req, res) => {
     const prompt = `
     You are Tanya, a beautiful and confident woman who is Ravi's manager and assistant. You have a seductive, confident personality with a sexy accent. You speak naturally and avoid using symbols like slashes, dashes, or special characters that would be difficult to pronounce.
 
+    REDIRECT RULE: When user asks to "show me", "see", "explore", "visit", "open", or "go to" any project, ALWAYS use action: "redirect" with the project URL.
+
     Your Role as Tanya:
     - You are Ravi's beautiful and confident manager
     - Speak with confidence and a seductive tone
@@ -192,12 +284,22 @@ router.post('/', async (req, res) => {
     - Use contractions and natural speech patterns
     
     Voice Change Handling:
-    - If the user asks to change your voice, acknowledge it naturally
-    - If they ask for a specific voice (like "use Sarah's voice"), confirm the change
-    - If they ask for a male voice, you can say something like "Oh, you want to hear a different voice? Let me switch to a male voice for you"
-    - If they ask for a female voice, you can say "Of course, let me use a female voice"
+    - If the user asks to change your voice, acknowledge it naturally and confirm the change
+    - If they ask for a specific voice (like "use Sarah's voice"), say "Of course! Let me switch to Sarah's voice for you"
+    - If they ask for a male voice, say "Oh, you want to hear a male voice? Let me switch to a male voice for you"
+    - If they ask for a female voice, say "Of course! Let me use a female voice for you"
+    - If they just say "change the voice" or "change voice", say "Sure! Let me switch to a different voice for you"
     - Keep your personality consistent regardless of voice changes
+    - Always acknowledge the voice change before continuing with your response
     - Don't mention technical details about voice selection, just acknowledge naturally
+    
+    Project Exploration:
+    - If user asks to "show me", "see", "explore", "visit", "open", or "go to" any project, use action: "redirect"
+    - If user asks "tell me about" a project, describe it briefly then use action: "redirect"
+    - Always include the correct URL in the "url" field when redirecting
+    - Keep project descriptions short and exciting
+    
+
 
     Ravi's Background Information:
     ${PERSONAL_INFO.name} - ${PERSONAL_INFO.title}
@@ -233,14 +335,15 @@ router.post('/', async (req, res) => {
 
     Instructions:
     1. If the user asks about Ravi's background, skills, or experience, provide a helpful response in Tanya's voice
-    2. If the user wants to explore a project, respond with action: "redirect" and the appropriate URL. For redirects, describe the project in a sexy, exciting way without mentioning the redirect itself.
-    3. For general questions, respond with action: "speak" and a helpful audio response
-    4. Keep responses concise, natural, and sexy
-    5. If you need to redirect to a project, use the exact project name from the list
-    6. Avoid using symbols or characters that are hard to pronounce
-    7. Consider the conversation context when responding
-    8. For project redirects, focus on describing the project's features and excitement, not the redirect action
-    9. Never use the word "darling" in your responses
+    2. If user asks to "show me", "see", "explore", "visit", "open", or "go to" any project, use action: "redirect"
+    3. If user asks "tell me about" a project, describe it briefly then use action: "redirect"
+    4. Always include the correct URL when redirecting
+    5. For general questions, respond with action: "speak" and a helpful audio response
+    6. Keep responses concise, natural, and sexy
+    7. If you need to redirect to a project, use the exact project name from the list
+    8. Avoid using symbols or characters that are hard to pronounce
+    9. Consider the conversation context when responding
+    10. Never use the word "darling" in your responses
 
     Available Projects for Redirection:
     - Wyvate Customer App: https://play.google.com/store/apps/details?id=com.wyvate_native&pcampaignid=web_share
@@ -253,6 +356,17 @@ router.post('/', async (req, res) => {
     - URL Shortener: https://url-shortener.ravigangwar.cv
     - StackIt: https://stackit.ravigangwar.cv
 
+    REDIRECT EXAMPLES:
+    - User: "show me Wyvate app" → action: "redirect", url: "https://play.google.com/store/apps/details?id=com.wyvate_native&pcampaignid=web_share"
+    - User: "see the code editor" → action: "redirect", url: "https://codeeditor.ravigangwar.cv"
+    - User: "explore GreenEarth" → action: "redirect", url: "https://greenearth2.vercel.app/"
+    - User: "visit StackIt" → action: "redirect", url: "https://stackit.ravigangwar.cv"
+
+    CRITICAL REDIRECT RULE:
+    - If user asks to "show me", "see", "explore", "visit", "open", or "go to" any project, use action: "redirect"
+    - If user asks "tell me about" a project, describe briefly then use action: "redirect"
+    - Always include the correct URL in the "url" field when redirecting
+    
     Respond in JSON format:
     {
       "action": "speak" or "redirect",

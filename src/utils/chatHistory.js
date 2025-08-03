@@ -1,18 +1,17 @@
 // In-memory chat history storage
 const chatHistoryStore = new Map();
 
-// Cleanup old chat history
+// Cleanup old chat history - clear after 5 minutes of inactivity
 setInterval(() => {
-  const threeMinutesAgo = Date.now() - (3 * 60 * 1000);
+  const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
   chatHistoryStore.forEach((history, ip) => {
-    const filteredHistory = history.filter((msg) => msg.timestamp > threeMinutesAgo);
-    if (filteredHistory.length === 0) {
+    const lastMessageTime = history.length > 0 ? history[history.length - 1].timestamp : 0;
+    if (lastMessageTime < fiveMinutesAgo) {
       chatHistoryStore.delete(ip);
-    } else {
-      chatHistoryStore.set(ip, filteredHistory);
+      console.log(`Cleared chat history for IP: ${ip} (inactive for 5+ minutes)`);
     }
   });
-}, 60000);
+}, 60000); // Check every minute
 
 function getClientIP(req) {
   return req.headers['x-forwarded-for']?.split(',')[0] || 
@@ -36,6 +35,33 @@ function addMessageToHistory(ip, message, type, voice = null) {
 
 function getRecentHistory(ip) {
   return chatHistoryStore.get(ip) || [];
+}
+
+function clearHistory(ip) {
+  chatHistoryStore.delete(ip);
+  return true;
+}
+
+function getHistoryStats(ip) {
+  const history = chatHistoryStore.get(ip) || [];
+  const lastMessageTime = history.length > 0 ? history[history.length - 1].timestamp : null;
+  const currentTime = Date.now();
+  const fiveMinutesInMs = 5 * 60 * 1000;
+  
+  let timeUntilClear = null;
+  if (lastMessageTime) {
+    const timeSinceLastMessage = currentTime - lastMessageTime;
+    timeUntilClear = Math.max(0, fiveMinutesInMs - timeSinceLastMessage);
+  }
+  
+  return {
+    totalMessages: history.length,
+    userMessages: history.filter(msg => msg.type === 'user').length,
+    assistantMessages: history.filter(msg => msg.type === 'assistant').length,
+    lastMessageTime: lastMessageTime,
+    timeUntilAutoClear: timeUntilClear,
+    willAutoClearIn: timeUntilClear ? Math.ceil(timeUntilClear / 1000) : null // seconds
+  };
 }
 
 function extractCleanAudioText(text) {
@@ -74,5 +100,7 @@ module.exports = {
   getClientIP,
   addMessageToHistory,
   getRecentHistory,
+  clearHistory,
+  getHistoryStats,
   extractCleanAudioText
 }; 
