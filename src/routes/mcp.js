@@ -19,6 +19,95 @@ const {
 
 let ttsInstance = null;
 
+// Available Kokoro TTS voices
+const AVAILABLE_VOICES = {
+  "af_nicole": { name: "Nicole", description: "Friendly and warm", gender: "female" },
+  "af_sarah": { name: "Sarah", description: "Professional and clear", gender: "female" },
+  "af_emma": { name: "Emma", description: "Energetic and enthusiastic", gender: "female" },
+  "af_lisa": { name: "Lisa", description: "Calm and soothing", gender: "female" },
+  "af_anna": { name: "Anna", description: "Confident and authoritative", gender: "female" },
+  "am_steve": { name: "Steve", description: "Professional male voice", gender: "male" },
+  "am_david": { name: "David", description: "Friendly male voice", gender: "male" },
+  "am_mike": { name: "Mike", description: "Energetic male voice", gender: "male" },
+};
+
+// Function to select voice based on user input
+function selectVoiceFromUserInput(userMessage, chatHistory) {
+  const message = userMessage.toLowerCase();
+  
+  // Check for specific voice requests
+  if (message.includes("nicole") || message.includes("default voice")) {
+    return "af_nicole";
+  }
+  if (message.includes("sarah")) {
+    return "af_sarah";
+  }
+  if (message.includes("emma")) {
+    return "af_emma";
+  }
+  if (message.includes("lisa")) {
+    return "af_lisa";
+  }
+  if (message.includes("anna")) {
+    return "af_anna";
+  }
+  if (message.includes("steve")) {
+    return "am_steve";
+  }
+  if (message.includes("david")) {
+    return "am_david";
+  }
+  if (message.includes("mike")) {
+    return "am_mike";
+  }
+  
+  // Check for gender-based requests
+  if (message.includes("male voice") || message.includes("guy voice") || message.includes("man voice")) {
+    return "am_steve"; // Default male voice
+  }
+  if (message.includes("female voice") || message.includes("girl voice") || message.includes("woman voice")) {
+    return "af_nicole"; // Default female voice
+  }
+  
+  // Check for personality-based requests
+  if (message.includes("professional") || message.includes("formal")) {
+    return "af_sarah";
+  }
+  if (message.includes("energetic") || message.includes("enthusiastic") || message.includes("excited")) {
+    return "af_emma";
+  }
+  if (message.includes("calm") || message.includes("soothing") || message.includes("relaxed")) {
+    return "af_lisa";
+  }
+  if (message.includes("confident") || message.includes("authoritative")) {
+    return "af_anna";
+  }
+  if (message.includes("friendly") || message.includes("warm")) {
+    return "af_nicole";
+  }
+  
+  // Check for voice change requests
+  if (message.includes("change voice") || message.includes("switch voice") || message.includes("different voice")) {
+    // If user just asks for a change without specifying, cycle through voices
+    const recentVoices = chatHistory
+      .filter(msg => msg.voice)
+      .slice(-3)
+      .map(msg => msg.voice);
+    
+    const allVoices = Object.keys(AVAILABLE_VOICES);
+    const availableVoices = allVoices.filter(voice => !recentVoices.includes(voice));
+    
+    if (availableVoices.length > 0) {
+      return availableVoices[0];
+    } else {
+      return "af_sarah"; // Fallback to Sarah if all voices were recently used
+    }
+  }
+  
+  // Default to Nicole if no specific request
+  return "af_nicole";
+}
+
 async function initializeTTS() {
   if (!ttsInstance) {
     try {
@@ -43,9 +132,16 @@ router.post('/', async (req, res) => {
     const { message, chatHistory } = req.body;
     const clientIP = getClientIP(req);
     
+    // Get recent history for voice selection
+    const recentHistory = getRecentHistory(clientIP);
+    
+    // Select voice based on user input
+    const selectedVoice = selectVoiceFromUserInput(message, recentHistory);
+    console.log("Selected voice:", selectedVoice, "for message:", message);
+    
     // Add current message to history
     const existingHistory = addMessageToHistory(clientIP, message, 'user');
-    const recentHistory = existingHistory.slice(-10);
+    const updatedHistory = existingHistory.slice(-10);
 
     const conversationContext = recentHistory
       .map(msg => `${msg.type === 'user' ? 'User' : 'Tanya'}: ${msg.text}`)
@@ -94,6 +190,14 @@ router.post('/', async (req, res) => {
     - Be flirty but professional
     - Show pride in Ravi's accomplishments
     - Use contractions and natural speech patterns
+    
+    Voice Change Handling:
+    - If the user asks to change your voice, acknowledge it naturally
+    - If they ask for a specific voice (like "use Sarah's voice"), confirm the change
+    - If they ask for a male voice, you can say something like "Oh, you want to hear a different voice? Let me switch to a male voice for you"
+    - If they ask for a female voice, you can say "Of course, let me use a female voice"
+    - Keep your personality consistent regardless of voice changes
+    - Don't mention technical details about voice selection, just acknowledge naturally
 
     Ravi's Background Information:
     ${PERSONAL_INFO.name} - ${PERSONAL_INFO.title}
@@ -199,18 +303,18 @@ router.post('/', async (req, res) => {
     try {
       const tts = await initializeTTS();
       const audio = await tts.generate(cleanAudioText, {
-        voice: "af_nicole",
+        voice: selectedVoice,
       });
       const wav = await audio.toWav();
       audioBuffer = Buffer.from(wav);
-      console.log("Audio generated successfully, size:", audioBuffer.length);
+      console.log("Audio generated successfully with voice:", selectedVoice, "size:", audioBuffer.length);
     } catch (error) {
       console.error("Failed to generate audio:", error);
       // Continue without audio if TTS fails
     }
 
     // Add assistant response to history - only the clean audio text
-    addMessageToHistory(clientIP, cleanAudioText, 'assistant');
+    addMessageToHistory(clientIP, cleanAudioText, 'assistant', selectedVoice);
 
     // Send response with audio data
     const responseData = {

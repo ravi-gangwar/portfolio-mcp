@@ -21,12 +21,13 @@ function getClientIP(req) {
          'unknown';
 }
 
-function addMessageToHistory(ip, message, type) {
+function addMessageToHistory(ip, message, type, voice = null) {
   const existingHistory = chatHistoryStore.get(ip) || [];
   existingHistory.push({ 
     timestamp: Date.now(), 
     type, 
-    text: message 
+    text: message,
+    voice: voice
   });
   const recentHistory = existingHistory.slice(-10);
   chatHistoryStore.set(ip, recentHistory);
