@@ -20,6 +20,9 @@ app.use(compression());
 // CORS middleware
 app.use(corsMiddleware);
 
+// Handle preflight requests
+app.options('*', corsMiddleware);
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
